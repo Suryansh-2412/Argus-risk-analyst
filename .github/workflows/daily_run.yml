@@ -1,0 +1,66 @@
+name: Daily Pipeline Run
+
+on:
+  schedule:
+    # Runs at 8:00 AM UTC Monday–Friday (after US premarket opens)
+    - cron: "0 8 * * 1-5"
+  workflow_dispatch:    # allow manual trigger from GitHub UI
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download model cache (optional speedup)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ hashFiles('config.yaml') }}
+          restore-keys: hf-models-
+
+      - name: Restore DB from previous run
+        uses: actions/cache@v4
+        with:
+          path: data/finai.db
+          key: finai-db-${{ github.run_id }}
+          restore-keys: finai-db-
+
+      - name: Run pipeline
+        env:
+          FINNHUB_API_KEY:  ${{ secrets.FINNHUB_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m src.pipeline
+
+      - name: Save updated DB
+        uses: actions/cache@v4
+        with:
+          path: data/finai.db
+          key: finai-db-${{ github.run_id }}
+
+      - name: Upload DB artifact (30-day retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: finai-db-${{ github.run_id }}
+          path: data/finai.db
+          retention-days: 30
+
+      - name: Upload pipeline log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-log-${{ github.run_id }}
+          path: data/pipeline.log
+          retention-days: 7

@@ -1,0 +1,38 @@
+# Environment
+.env
+*.env
+
+# Data (DB grows large, track via CI artifacts instead)
+data/finai.db
+data/*.log
+data/risk_model_v2.joblib
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Model cache
+.cache/
+~/.cache/huggingface/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

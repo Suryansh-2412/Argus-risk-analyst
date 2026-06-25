@@ -1,0 +1,127 @@
+# ============================================================
+# FinAI Risk Analyst — Central Config
+# All model choices, weights, and pipeline params live here.
+# Swapping a model = change `active` field only.
+# ============================================================
+
+companies:
+  - { ticker: AAPL,  name: "Apple Inc." }
+  - { ticker: MSFT,  name: "Microsoft Corporation" }
+  - { ticker: GOOGL, name: "Alphabet Inc." }
+  - { ticker: AMZN,  name: "Amazon.com Inc." }
+  - { ticker: META,  name: "Meta Platforms Inc." }
+  - { ticker: TSLA,  name: "Tesla Inc." }
+  - { ticker: NVDA,  name: "NVIDIA Corporation" }
+  - { ticker: JPM,   name: "JPMorgan Chase & Co." }
+  - { ticker: BAC,   name: "Bank of America Corp." }
+  - { ticker: GS,    name: "Goldman Sachs Group Inc." }
+  - { ticker: WMT,   name: "Walmart Inc." }
+  - { ticker: JNJ,   name: "Johnson & Johnson" }
+  - { ticker: PFE,   name: "Pfizer Inc." }
+  - { ticker: XOM,   name: "ExxonMobil Corporation" }
+  - { ticker: NFLX,  name: "Netflix Inc." }
+
+# ── NLP Models ───────────────────────────────────────────────
+# FREE options (in order of recommendation):
+#   flan_t5    — fully local, no key needed, good quality      ✅ DEFAULT
+#   groq       — free API (30 req/min), Llama 3.3 70B, fast   ✅ RECOMMENDED UPGRADE
+#   bart_local — fully local, simpler, no structured output    ✅ LIGHTWEIGHT FALLBACK
+#   anthropic  — paid ($)
+#   openai     — paid ($)
+
+models:
+  sentiment:
+    active: finbert
+    available:
+      finbert:
+        class: src.nlp.sentiment.finbert.FinBERTSentiment
+        model_name: ProsusAI/finbert
+        chunk_size: 400
+        chunk_overlap: 50
+        batch_size: 8
+
+  event_classifier:
+    active: bart_zero_shot
+    available:
+      bart_zero_shot:
+        class: src.nlp.events.zero_shot.ZeroShotEventClassifier
+        model_name: facebook/bart-large-mnli
+        confidence_threshold: 0.25
+        multi_label: true
+
+  summarizer:
+    # ↓ Change this one line to swap summarizer. Nothing else changes.
+    active: flan_t5
+
+    available:
+      flan_t5:
+        class: src.nlp.summarizer.llm.FLANT5Summarizer
+        model_name: google/flan-t5-large    # swap to flan-t5-base if RAM is tight
+        max_new_tokens: 300
+
+      groq:
+        class: src.nlp.summarizer.llm.GroqSummarizer
+        model: llama-3.3-70b-versatile      # free tier model
+        max_tokens: 350
+        # Set GROQ_API_KEY in .env — free at https://console.groq.com
+
+      bart_local:
+        class: src.nlp.summarizer.llm.BARTSummarizer
+        model_name: facebook/bart-large-cnn
+        max_length: 120
+        min_length: 30
+
+      anthropic:
+        class: src.nlp.summarizer.llm.AnthropicSummarizer
+        model: claude-haiku-4-5-20251001
+        max_tokens: 350
+
+      openai:
+        class: src.nlp.summarizer.llm.OpenAISummarizer
+        model: gpt-4o-mini
+        max_tokens: 350
+
+# ── Event Taxonomy ────────────────────────────────────────────
+event_taxonomy:
+  regulatory_legal:      { label: "regulatory investigation or legal action or lawsuit",      base_risk: 4.0 }
+  fraud_accounting:      { label: "accounting fraud or financial misconduct or restatement",  base_risk: 4.5 }
+  leadership_change:     { label: "CEO departure or executive resignation or leadership change", base_risk: 2.5 }
+  layoffs_restructuring: { label: "layoffs or mass job cuts or restructuring",                base_risk: 2.0 }
+  ma_acquisition:        { label: "merger or acquisition or buyout or takeover",              base_risk: 1.5 }
+  earnings_surprise:     { label: "earnings miss or earnings beat or revenue surprise",       base_risk: 2.0 }
+  product_supply_chain:  { label: "product recall or supply chain disruption or shortage",    base_risk: 1.5 }
+  macro_exposure:        { label: "interest rate or inflation or recession or tariff impact", base_risk: 1.0 }
+  general_news:          { label: "general company news or announcement",                     base_risk: 0.5 }
+
+# ── Risk Engine ───────────────────────────────────────────────
+risk:
+  version: v1   # switch to v2 after running notebooks/train_risk_model.ipynb
+
+  v1:
+    sentiment_weight: 1.0
+    volume_weight: 0.3
+    recency_decay_days: 7
+    confidence_floor: 0.25
+
+  v2:
+    model_path: data/risk_model_v2.joblib
+    feature_version: 1
+
+# ── Ingestion ─────────────────────────────────────────────────
+ingest:
+  sources:
+    - finnhub     # free tier — get key at https://finnhub.io (free forever)
+    - rss         # Google News RSS — completely free, no key
+  lookback_days: 3
+  dedup_threshold: 0.85
+  dedup_model: all-MiniLM-L6-v2
+  max_articles_per_company: 20
+
+# ── Database ──────────────────────────────────────────────────
+database:
+  url: sqlite:///data/finai.db
+
+# ── Logging ───────────────────────────────────────────────────
+logging:
+  level: INFO
+  file: data/pipeline.log
