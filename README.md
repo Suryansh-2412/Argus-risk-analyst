@@ -91,7 +91,7 @@ Switch to v2 by changing `risk.version: v2` in `config.yaml`.
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/you/finai-risk-analyst
+git clone https://github.com/Suryansh-2412/Argus-risk-analyst
 cd finai-risk-analyst
 pip install -r requirements.txt
 
