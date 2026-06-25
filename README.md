@@ -1,4 +1,4 @@
-# FinAI Risk Analyst
+# Argus Risk Analyst
 
 AI-powered news risk monitoring for 100s of companies — in the time it takes a human analyst to cover two.
 
